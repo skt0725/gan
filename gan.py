@@ -68,5 +68,21 @@ class Discriminator(nn.Module):
     def forward(self, x):
         output = self.layer(x)
         return output
+latent_size = 64
+batch_size = 128
+discriminator = Discriminator(img.flatten().size()).to(device)
+generator = Generator(latent_size, img.flatten().size()).to(device)
+dis_optimizer = torch.optim.Adam(discriminator.parameters(), lr=0.005)
+gen_optimizer = torch.optim.Adam(generator.parameters(), lr=0.005)
 
- 
+epoch = 100
+for epoch in range(epoch):
+    for i, (image, label) in enumerate(dataloader):
+        real_image = image.view((batch_size, -1)).to(device)
+        z = torch.randn((batch_size, latent_size)).to(device)
+        fake_image = generator(z)
+        
+
+# experiment
+# does order matter? g then d // d then g -> in the paper, d->g
+# how about uniform distribution for noise distribution
