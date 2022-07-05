@@ -24,16 +24,49 @@ train_data = datasets.MNIST(data_root, transform=transform, train=True, download
 
 dataloader = DataLoader(train_data, batch_size = 128, shuffle=True, num_workers = 4)
 
-class Generator(nn.Module):
-    def __init__(self):
-        super().__init__()
-        # self.layer1 = 
-    def forward(self, x):
-        output = self.
-class Discriminator(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.layer1 = nn.Sequential(
+# example data
+train_x, train_y = next(iter(dataloader))
+img = train_x[0].squeeze()
+label = train_y[0]
+plt.imshow(img, cmap="gray")
+plt.title = label
+plt.show()
 
+# https://machinelearningmastery.com/how-to-train-stable-generative-adversarial-networks/
+# Leaky ReLU for discriminator, relu&tanh for generator
+class Generator(nn.Module):
+    def __init__(self, latent_size, image_size):
+        super().__init__()
+        self.layer = nn.Sequential(
+            nn.Linear(latent_size, 128),
+            nn.ReLU(inplace = True),
+            nn.Linear(128, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, image_size),
+            nn.Tanh()
+        ) 
+    def forward(self, z):
+        output = self.layer(z)
+        return output
+class Discriminator(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.layer = nn.Sequential(
+            nn.Linear(input_size, 128),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(128, 256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(256, 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(256, 1),
+            nn.Sigmoid()
         )
+    def forward(self, x):
+        output = self.layer(x)
+        return output
+
  
