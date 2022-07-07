@@ -6,6 +6,7 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from torchvision.utils import save_image
+from time import time
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]= "0, 1"
@@ -22,10 +23,13 @@ Is there any reason to choose the last transform as normalize([0.5], [1])?
 Normally, people set it as normalize([0.5], [0.5]) to make the scale of input image as [-1, 1] from [0, 1].
 FYI) To make the scale of RGB image as [-1, -1] from [0, 1], you can use normalize([0.5, 0.5, 0.5], [0.5,0.5,0.5]).
 '''
+'''
+I miscalculated :(
+'''
 transform = transforms.Compose([
     transforms.Resize(28),
     transforms.ToTensor(),
-    transforms.Normalize([0.5], [1])
+    transforms.Normalize([0.5], [0.5])
 ])
 
 latent_size = 64
@@ -34,7 +38,7 @@ batch_size = 128
 '''
 Comment: Good. Large enough.
 '''
-total_epoch = 300
+total_epoch = 150
 learning_rate = 0.0001
 
 data_root = './data'
@@ -54,6 +58,10 @@ img = train_x[0].squeeze()
 Comment:
 Do you know why we are using "Tanh" as the last activation of the generator?
 Also, guess the reason for the "sigmoid" which is the last activation of the discriminator.
+'''
+'''
+Tanh : generator should generate pixel values that range from -1 to 1 as in our train_data with transform parameter
+sigmoid : discriminator should output values close to 0 for fake images and 1 for real images so sigmoid is used
 '''
 # https://machinelearningmastery.com/how-to-train-stable-generative-adversarial-networks/
 # Leaky ReLU for discriminator, relu&tanh for generator
@@ -80,7 +88,10 @@ Maybe, you cannot use the argument "inplace" for relu with higher version of pyt
 I remember that this is for memory control of older version of pytorch, but not sure.
 You can search about it.
 '''
-
+'''
+I wasn't able to find such articles so I hope it isn't problematic.
+I googled it, and took a look in to official documentation of pytorch 1.12 and it seemed fine!
+'''
 class Discriminator(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -108,9 +119,11 @@ dis_optimizer = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
 gen_optimizer = torch.optim.Adam(generator.parameters(), lr=learning_rate)
 
 criterion = nn.BCELoss().to(device)
+average_time = 0
 for epoch in range(total_epoch):
+    start_time = time()
     for i, (image, label) in enumerate(dataloader):
-
+        
         real_image = image.view((image.size(0), -1)).to(device)
         ones = torch.ones((image.size(0), 1)).to(device)
         zeros = torch.zeros((image.size(0), 1)).to(device)
@@ -130,8 +143,15 @@ for epoch in range(total_epoch):
         
         For detailed information, please google it.
         '''
+        '''
+        Based on my code, generator gets updated in 'train discriminator' phase which is problematic right?
+        I thought we only give discriminator.parameters() as parameter to dis_optimizer so it wouldn't be problematic.
+        Also, it is not the same in updating generator since we only update 
+
+        '''
+        # fake_output = discriminator(fake_image.detach())
         fake_output = discriminator(fake_image)
-        
+
         real_loss = criterion(real_output, ones)
         fake_loss = criterion(fake_output, zeros)
         discriminator_loss = real_loss + fake_loss
@@ -152,15 +172,17 @@ for epoch in range(total_epoch):
         save_image(real_image[:25], "./result/real.png", nrow=5, normalize=True)
     if epoch % 10 == 0:
         fake_image = fake_image.view(fake_image.size(0), 1, 28, 28)
-        dir = f"./lr_{learning_rate}"
+        # dir = f"./result/detach"
+        dir = f"./result/no_detach"
         if not os.path.exists(dir):
-            os.mkdir(dir)
-
+            os.makedirs(dir)
         save_image(fake_image, os.path.join(dir, f"{epoch}.png"), normalize=True)
-        
-    print(f'Epoch {epoch}/{total_epoch} || discriminator loss={discriminator_loss:.4f}  || generator loss={generator_loss:.4f}')
-torch.save(discriminator.state_dict(), "discriminator.ckpt")
-torch.save(generator.state_dict(), "generator.ckpt")
+    t = time()-start_time
+    average_time += t
+    print(f'Epoch {epoch}/{total_epoch} || discriminator loss={discriminator_loss:.4f}  || generator loss={generator_loss:.4f} || time {t:.3f}')
+torch.save(discriminator.state_dict(), os.path.join(dir,"discriminator.ckpt"))
+torch.save(generator.state_dict(), os.path.join(dir,"generator.ckpt"))
+print(average_time/epoch)
 
 # experiment
 # does order matter? g then d // d then g -> in the paper, d->g
