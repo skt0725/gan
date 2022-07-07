@@ -17,6 +17,12 @@ print('Device:', device)
 print('Count of using GPUs:', torch.cuda.device_count())
 print('Current cuda device:', torch.cuda.current_device())
 
+'''
+Comment: 
+Is there any reason to choose the last transform as normalize([0.5], [1])?
+Normally, people set it as normalize([0.5], [0.5]) to make the scale of input image as [-1, 1] from [0, 1].
+FYI) To make the scale of RGB image as [-1, -1] from [0, 1], you can use normalize([0.5, 0.5, 0.5], [0.5,0.5,0.5]).
+'''
 transform = transforms.Compose([
     transforms.Resize(28),
     transforms.ToTensor(),
@@ -25,6 +31,10 @@ transform = transforms.Compose([
 
 latent_size = 64
 batch_size = 128
+
+'''
+Comment: Good. Large enough.
+'''
 total_epoch = 300
 
 data_root = './data'
@@ -40,6 +50,11 @@ img = train_x[0].squeeze()
 # plt.title = label
 # plt.show()
 
+'''
+Comment:
+Do you know why we are using "Tanh" as the last activation of the generator?
+Also, guess the reason for the "sigmoid" which is the last activation of the discriminator.
+'''
 # https://machinelearningmastery.com/how-to-train-stable-generative-adversarial-networks/
 # Leaky ReLU for discriminator, relu&tanh for generator
 class Generator(nn.Module):
@@ -58,6 +73,14 @@ class Generator(nn.Module):
     def forward(self, z):
         output = self.layer(z)
         return output
+
+'''
+Comment:
+Maybe, you cannot use the argument "inplace" for relu with higher version of pytorch.
+I remember that this is for memory control of older version of pytorch, but not sure.
+You can search about it.
+'''
+
 class Discriminator(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -96,6 +119,17 @@ for epoch in range(total_epoch):
         real_output = discriminator(real_image)
         z = torch.randn((image.size(0), latent_size)).to(device)
         fake_image = generator(z)
+        '''
+        Comment:
+        To update discriminator, you don't have to save gradient of generator.
+        Thus, you may use "detach()" to prevent additional gradient flow to generator.
+        ex) fake_output = discriminator(fake_image.detach())
+
+        Be careful. This is not true for updating generator.
+        In that case, the gradient of discriminator is required.        
+        
+        For detailed information, please google it.
+        '''
         fake_output = discriminator(fake_image)
         
         real_loss = criterion(real_output, ones)
