@@ -92,6 +92,9 @@ You can search about it.
 I wasn't able to find such articles so I hope it isn't problematic.
 I googled it, and took a look in to official documentation of pytorch 1.12 and it seemed fine!
 '''
+'''
+Good. I mean "higher version of pytorch" around 1.7-1.8, and it is changed again...
+'''
 class Discriminator(nn.Module):
     def __init__(self, input_size):
         super().__init__()
@@ -147,7 +150,9 @@ for epoch in range(total_epoch):
         Based on my code, generator gets updated in 'train discriminator' phase which is problematic right?
         I thought we only give discriminator.parameters() as parameter to dis_optimizer so it wouldn't be problematic.
         Also, it is not the same in updating generator since we only update 
-
+        '''
+        '''
+        Checked! Totally fine without detach(), but just for clean code.
         '''
         # fake_output = discriminator(fake_image.detach())
         fake_output = discriminator(fake_image)
