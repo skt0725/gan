@@ -1,4 +1,3 @@
-from dis import dis
 import os
 import torch
 import torch.nn as nn
@@ -26,6 +25,7 @@ transform = transforms.Compose([
 latent_size = 64
 batch_size = 128
 total_epoch = 300
+learning_rate = 0.0001
 
 data_root = './data'
 train_data = datasets.MNIST(data_root, transform=transform, train=True, download=True)
@@ -81,8 +81,8 @@ discriminator = Discriminator(len(img.flatten())).to(device)
 discriminator = nn.DataParallel(discriminator, output_device=[0,1])
 generator = Generator(latent_size, len(img.flatten())).to(device)
 generator = nn.DataParallel(generator, output_device=[0,1])
-dis_optimizer = torch.optim.Adam(discriminator.parameters(), lr=0.0001)
-gen_optimizer = torch.optim.Adam(generator.parameters(), lr=0.0001)
+dis_optimizer = torch.optim.Adam(discriminator.parameters(), lr=learning_rate)
+gen_optimizer = torch.optim.Adam(generator.parameters(), lr=learning_rate)
 
 criterion = nn.BCELoss().to(device)
 for epoch in range(total_epoch):
@@ -118,7 +118,11 @@ for epoch in range(total_epoch):
         save_image(real_image[:25], "./result/real.png", nrow=5, normalize=True)
     if epoch % 10 == 0:
         fake_image = fake_image.view(fake_image.size(0), 1, 28, 28)
-        save_image(fake_image, f"./result/{epoch}.png", normalize=True)
+        dir = f"./lr_{learning_rate}"
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+
+        save_image(fake_image, os.path.join(dir, f"{epoch}.png"), normalize=True)
         
     print(f'Epoch {epoch}/{total_epoch} || discriminator loss={discriminator_loss:.4f}  || generator loss={generator_loss:.4f}')
 torch.save(discriminator.state_dict(), "discriminator.ckpt")
@@ -127,4 +131,4 @@ torch.save(generator.state_dict(), "generator.ckpt")
 # experiment
 # does order matter? g then d // d then g -> in the paper, d->g
 # how about cnn rather than fcnn?
-# learning rate : 0.001 -> loss diverge
+# learning rate : 0.001 -> overshoot
